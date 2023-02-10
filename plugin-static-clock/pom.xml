@@ -2,10 +2,11 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.sodacan.plugin</groupId>
   <artifactId>plugin-static-clock</artifactId>
-    <parent>
+  <packaging>jar</packaging>
+  <parent>
   	<groupId>net.sodacan</groupId>
   	<version>0.0.1</version>
-  	<artifactId>sodacan</artifactId>
+  	<artifactId>plugins</artifactId>
   </parent>
   <properties>
   </properties>

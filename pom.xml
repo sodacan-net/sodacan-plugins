@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.sodacan</groupId>
-	<artifactId>sodacan</artifactId>
+	<artifactId>plugins</artifactId>
 	<version>0.0.1</version>
-	<description>Top-level (parent) maven project for SodaCan</description>
+	<description>Parent project for sodacan plugins</description>
 	<modules>
 		<module>plugin-kafka</module>
 		<module>plugin-memory</module>

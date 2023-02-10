@@ -2,9 +2,10 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>net.sodacan</groupId>
-    <artifactId>sodacan</artifactId>
+    <artifactId>plugins</artifactId>
     <version>0.0.1</version>
   </parent>
+  <packaging>jar</packaging>
   <artifactId>plugin-kafka</artifactId>
   <dependencies>
 	<dependency>
