@@ -23,7 +23,6 @@ import org.junit.Test;
 
 import net.sodacan.config.Config;
 import net.sodacan.config.ConfigMode;
-import net.sodacan.mode.BaseMode;
 import net.sodacan.mode.Mode;
 import net.sodacan.mode.spi.PluginEvent;
 import net.sodacan.module.statement.SodacanModule;
