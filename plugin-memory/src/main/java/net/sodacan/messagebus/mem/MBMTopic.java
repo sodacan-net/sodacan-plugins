@@ -15,11 +15,11 @@
 package net.sodacan.messagebus.mem;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -29,13 +29,12 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBMTopic implements MBTopic {
+public class MBMTopic implements MBTopic, Supplier<MBRecord>{
 	private String topicName;
 	long timestamp;
 	long nextOffset;
 	
-	private Queue<MBMRecord> queue;
-	private Iterator<MBMRecord> iterator;
+	private BlockingQueue<MBMRecord> queue;
 	
 	/**
 	 * We get passed in a pointer to the topic's queue so that we can serve records from it.
@@ -44,11 +43,10 @@ public class MBMTopic implements MBTopic {
 	 * @param nextOffset
 	 * @param queue
 	 */
-	public MBMTopic(String topicName, long nextOffset, Queue<MBMRecord> queue) {
+	public MBMTopic(String topicName, long nextOffset, BlockingQueue<MBMRecord> queue) {
 		this.topicName = topicName;
 		this.nextOffset = nextOffset;
 		this.queue = queue;
-		this.iterator = queue.iterator();
 	}
 
 	@Override
@@ -56,23 +54,6 @@ public class MBMTopic implements MBTopic {
 		return topicName;
 	}
 
-	/**
-	 * For the poll call we just return, no delay
-	 * @param timeout
-	 * @return
-	 */
-	@Override
-	public MBMRecord poll(Duration timeout) {
-		MBMRecord record;
-		while (true) {
-			record = iterator.next();
-			if (record.getOffset() >= nextOffset) {
-				break;
-			}
-		}
-		nextOffset = record.getOffset()+1;
-		return record;
-	}
 	/**
 	 * Return a reduced snapshot of the queue.
 	 */
@@ -92,5 +73,19 @@ public class MBMTopic implements MBTopic {
 
 	@Override
 	public void close() throws IOException {
+	}
+
+	@Override
+	public Stream<MBRecord> follow() {
+		return Stream.generate(this);
+	}
+
+	@Override
+	public MBRecord get() {
+		try {
+			return queue.take();
+		} catch (InterruptedException e) {
+			throw new RuntimeException("Error getting item from queue in MBMTopic",e);
+		}
 	}			
 }

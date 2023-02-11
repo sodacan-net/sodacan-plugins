@@ -16,9 +16,9 @@ package net.sodacan.messagebus.mem;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +29,7 @@ import net.sodacan.messagebus.MBTopic;
 public class MBM implements MB {
 	private final static Logger logger = LoggerFactory.getLogger(MBM.class);
 	
-	private Map<String, Queue<MBMRecord>> topics = new ConcurrentHashMap<>();
+	private Map<String, BlockingQueue<MBMRecord>> topics = new ConcurrentHashMap<>();
 
 	@SuppressWarnings("unused")
 	private Map<String,String> configProperties;
@@ -62,7 +62,7 @@ public class MBM implements MB {
 			logger.debug("Create topic " + topicName + " failed");
 			return false;
 		}
-		topics.put(topicName,  new ConcurrentLinkedQueue<MBMRecord>());
+		topics.put(topicName,  new LinkedBlockingQueue<MBMRecord>());
 		return true;
 	}
 
@@ -86,7 +86,7 @@ public class MBM implements MB {
 
 	@Override
 	public void produce(String topicName, String key, String value) {
-		Queue<MBMRecord> queue = topics.get(topicName);
+		BlockingQueue<MBMRecord> queue = topics.get(topicName);
 		if (queue==null) {
 			throw new RuntimeException("Unknown Topic Name: " + topicName);
 		}

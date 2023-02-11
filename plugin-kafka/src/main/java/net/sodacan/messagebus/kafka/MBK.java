@@ -57,7 +57,6 @@ public class MBK implements MB {
 	private final static Logger logger = LoggerFactory.getLogger(MBK.class);
 	private static final int PARTITIONS = 1;
 	private static final short REPLICAS = 1;
-	private static final int NUMBER_OF_TRIES = 5;
 	private static final int WAIT_SECONDS = 5;
 	private static MBK instance;
 	private AdminClient adminClient;
@@ -221,10 +220,14 @@ public class MBK implements MB {
 		topics.add(topic);
 		deleteTopics(topics);
 	}
-
+	
+	/**
+	 * Construct a topic ready for a snapshot or follow operation.
+	 * A topic is a one-time use object.
+	 */
 	@Override
-	public MBTopic openTopic(String topicName, long nextTopic) {
-		return new MBKTopic( configProperties, topicName, nextTopic );
+	public MBTopic openTopic(String topicName, long nextOffset) {
+		return new MBKTopic( configProperties, topicName, nextOffset );
 	}
 
 	protected void setupProducer() {
@@ -243,6 +246,7 @@ public class MBK implements MB {
 		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 		producer = new KafkaProducer<>(props);
 	}
+
 	@Override
 	public void produce(String topicName, String key, String value) {
 		if (producer==null) {

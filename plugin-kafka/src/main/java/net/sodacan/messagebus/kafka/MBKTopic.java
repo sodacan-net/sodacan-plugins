@@ -14,21 +14,22 @@
  */
 package net.sodacan.messagebus.kafka;
 
-import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.InterruptException;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -39,7 +40,7 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBKTopic implements MBTopic {
+public class MBKTopic implements MBTopic, Supplier<MBRecord> {
 
 	// The nextOffset is where we desire to start consuming
 	private long nextOffset;
@@ -52,7 +53,11 @@ public class MBKTopic implements MBTopic {
 	
 	private String topicName;
 	private Map<String,String> configProperties;
-
+	// Only used for a follow, not a snapshot
+	private Consumer<String,String> followConsumer;
+	private ConsumerRecords<String, String> followRecords;
+	private Iterator<ConsumerRecord<String, String>> followIterator;
+	
 	/**
 	 * Construct a topic for consuming records
 	 * @param brokers
@@ -95,8 +100,8 @@ public class MBKTopic implements MBTopic {
 
 	/**
 	 * <p>Load up a reduced list of records from this topic. Only the most recent of any
-	 * key is in the list.</p>
-	 * <p>A snapshot usually begins at offset zero and includes everything up 
+	 * key is in the map.</p>
+	 * <p>A snapshot usually begins at offset zero and includes everything up to
 	 * the end offset known when the topic was opened. A snapshot also accounts for deleted keys
 	 * (tombstones in Kafka).</p>
 	 */
@@ -127,33 +132,48 @@ public class MBKTopic implements MBTopic {
 		}
 	}
 	
-	public void follow( PropertyChangeListener listener) {
-		try {
-		} catch (Throwable e) {
-			if (!(e instanceof InterruptedException || e instanceof InterruptException)) {
-				throw new RuntimeException("Problem consuming from topic: " + topicName, e);
-			}
-		}
-		
-	}
-	
 	@Override
 	public String getTopicName() {
 		return topicName;
 	}
 
-	@Override
-	public MBRecord poll(Duration timeout) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 	/**
 	 * For snapshot requests, we close before returning the snapshot.
-	 * For follows, we need to chase down any existing threads and kill them.
+	 * For follows, we need to chase down any streams and kill them.
 	 */
 	@Override
 	public void close() throws IOException {
 		
+	}
+
+	/**
+	 * <p>Follow a topic starting from the supplied offset until forever, or when the stream is closed.</p>
+	 * <p>To feed a stream, we create a new thread to wait for records to arrive. For Kafka, it 
+	 * is critical that consumption of the stream remain lively. The caller should get back to reading
+	 * records from the stream as quickly as possible. Otherwise, no keep-alive signal is sent to the broker.
+	 * </p>
+	 */
+	@Override
+	public Stream<MBRecord> follow() {
+		followConsumer = openConsumer();
+		followRecords = null;
+		return Stream.generate(this);
+	}
+
+	@Override
+	public MBRecord get() {
+		while (true) {
+			// If no records, wait for some to arrive
+			if (followRecords==null) {
+				followRecords = followConsumer.poll(poll_timeout_ms);
+				followIterator = followRecords.iterator();
+			}
+			if (followIterator.hasNext()) {
+				return new MBKRecord(followIterator.next());
+			} else {
+				followRecords = null;
+			}
+		}
 	}
 
 }
