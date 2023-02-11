@@ -15,7 +15,6 @@
 package net.sodacan.plugin.clock;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import com.google.auto.service.AutoService;
@@ -60,6 +59,10 @@ public class RealClock extends Plugin implements ClockProvider, Supplier<Instant
 	@Override
 	public long getTimestamp() {
 		return Instant.now().toEpochMilli();
+	}
+	@Override
+	public void close() {
+		
 	}
 
 }

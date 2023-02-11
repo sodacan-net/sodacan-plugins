@@ -18,7 +18,6 @@ import java.util.Map;
 
 import com.google.auto.service.AutoService;
 
-import net.sodacan.config.Config;
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.mem.MBM;
 import net.sodacan.mode.spi.MessageBusProvider;
@@ -33,6 +32,11 @@ public class MemoryMessageBusProvider extends MemoryProvider implements MessageB
 			mb = MBM.createInstance(configProperties);
 		}
 		return mb;
+	}
+
+	@Override
+	public void close() {
+		
 	}
 
 }

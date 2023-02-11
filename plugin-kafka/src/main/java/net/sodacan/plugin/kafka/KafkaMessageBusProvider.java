@@ -33,6 +33,11 @@ public class KafkaMessageBusProvider extends KafkaProvider implements MessageBus
 		}
 		return mb;
 	}
-
+	/**
+	 * Close this messageBus
+	 */
+	public void close() {
+		
+	}
 
 }

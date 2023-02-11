@@ -64,5 +64,9 @@ public class StaticClock extends Plugin implements ClockProvider, Supplier<Insta
 	public long getTimestamp() {
 		return clock.millis();
 	}
-	
+	@Override
+	public void close() {
+		
+	}
+
 }

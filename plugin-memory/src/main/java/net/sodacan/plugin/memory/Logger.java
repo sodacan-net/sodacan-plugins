@@ -14,8 +14,6 @@
  */
 package net.sodacan.plugin.memory;
 
-import java.beans.PropertyChangeListener;
-
 import com.google.auto.service.AutoService;
 
 import net.sodacan.mode.spi.LoggerProvider;
@@ -43,6 +41,11 @@ final public class Logger extends Plugin implements LoggerProvider {
 	@Override
 	public void log(String msg) {
 		System.out.println("Seq: " + count++ + ", Mode: " + getMode() + ", Msg: " + msg);
+	}
+
+	@Override
+	public void close() {
+		
 	}
 
 

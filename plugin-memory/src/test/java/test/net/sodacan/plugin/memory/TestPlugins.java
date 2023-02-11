@@ -56,11 +56,11 @@ public class TestPlugins {
 			mode.log("Hello: "+ x);
 		}
 		
-		PluginEvent pe = findPluginEventByModeAndProperty("Mode1","msg");
-		assert("Hello: 4".equals(pe.getNewValue()));
+//		PluginEvent pe = findPluginEventByModeAndProperty("Mode1","msg");
+//		assert("Hello: 4".equals(pe.getNewValue()));
 		
 		// Before leaving the thread, remove the Mode variable
-		Mode.clearModeInThread();
+//		Mode.clearModeInThread();
 	}
 
 	

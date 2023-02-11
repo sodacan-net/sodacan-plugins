@@ -33,7 +33,6 @@ public class StateStore extends MemoryProvider implements StateStoreProvider {
 	// Our "database" of variables is stored here. Note: We should never see variables from 
 	// different modes in a single instance of this plugin.
 	private Set<VariablePayload> variables = new HashSet<>(); 
-	private int count = 0;
 	
 	@Override
 	public void save(VariablePayload payload) {
@@ -60,4 +59,9 @@ public class StateStore extends MemoryProvider implements StateStoreProvider {
 		});
 		return vps;
 	}
+	@Override
+	public void close() {
+		
+	}
+
 }
