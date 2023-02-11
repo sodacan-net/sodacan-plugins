@@ -14,21 +14,18 @@
  */
 package net.sodacan.plugin.memory;
 
-import java.util.Set;
-
 import net.sodacan.mode.spi.Plugin;
 
 public abstract class MemoryProvider extends Plugin {
 	public static final String PLUGIN_TYPE = "memory";
 
 	@Override
-	public boolean isMatch(Set<String> types) {
-		for (String type : types ) {
-			if (PLUGIN_TYPE.equals(type)) {
-				return true;
-			}
+	public boolean isMatch(String pluginTypes) {
+		if (PLUGIN_TYPE.equals(pluginTypes)) {
+			return true;
+		} else {
+			return false;
 		}
-		return false;
 	}
 
 }

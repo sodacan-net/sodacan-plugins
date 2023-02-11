@@ -15,7 +15,6 @@
 package net.sodacan.plugin.clock;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import com.google.auto.service.AutoService;
@@ -31,13 +30,13 @@ public class StaticClock extends Plugin implements ClockProvider, Supplier<Insta
 	
 	private ManualClock clock = new ManualClock();
 	
-	public boolean isMatch(Set<String> types) {
-		for (String type : types ) {
-			if (PLUGIN_TYPE.equals(type)) {
-				return true;
-			}
+	@Override
+	public boolean isMatch(String pluginTypes) {
+		if (PLUGIN_TYPE.equals(pluginTypes)) {
+			return true;
+		} else {
+			return false;
 		}
-		return false;
 	}
 
 	/**

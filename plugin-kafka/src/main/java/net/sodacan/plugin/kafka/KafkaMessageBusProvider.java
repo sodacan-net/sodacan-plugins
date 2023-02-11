@@ -14,9 +14,10 @@
  */
 package net.sodacan.plugin.kafka;
 
+import java.util.Map;
+
 import com.google.auto.service.AutoService;
 
-import net.sodacan.config.Config;
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.kafka.MBK;
 import net.sodacan.mode.spi.MessageBusProvider;
@@ -26,9 +27,9 @@ public class KafkaMessageBusProvider extends KafkaProvider implements MessageBus
 	MB mb = null;
 	
 	@Override
-	public MB getMB(Config config) {
+	public MB getMB(Map<String,String> configProperties) {
 		if (mb==null) {
-			mb = MBK.createInstance(config.getKafka().getUrl());
+			mb = MBK.createInstance(configProperties);
 		}
 		return mb;
 	}

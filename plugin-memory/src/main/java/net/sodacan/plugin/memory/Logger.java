@@ -14,31 +14,37 @@
  */
 package net.sodacan.plugin.memory;
 
+import java.beans.PropertyChangeListener;
+
 import com.google.auto.service.AutoService;
 
 import net.sodacan.mode.spi.LoggerProvider;
+import net.sodacan.mode.spi.Plugin;
 
 /**
- * This simple logger plugin responds to mode names that begin with "test-"
+ * This simple logger plugin just sends what it gets to the console
  * @author John Churin
  *
  */
 @AutoService(LoggerProvider.class)
-final public class Logger extends MemoryProvider implements LoggerProvider {
+final public class Logger extends Plugin implements LoggerProvider {
+	public static final String PLUGIN_TYPE = "console";
     private int count = 0;
+
+    public boolean isMatch(String pluginType) {
+		if (PLUGIN_TYPE.equals(pluginType)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 
 
 	@Override
 	public void log(String msg) {
-//		System.out.println("Seq: " + count++ + ", Mode: " + getMode() + ", Msg: " + msg);
-//		this.firePropertyChange​("msg", null, msg);
-		this.firePropertyChange​("msg", msg, msg);
+		System.out.println("Seq: " + count++ + ", Mode: " + getMode() + ", Msg: " + msg);
 	}
 
 
-	@Override
-	public String toString() {
-		return "MemoryLoggerPlugin";
-	}
 
 }

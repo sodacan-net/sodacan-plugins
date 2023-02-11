@@ -38,7 +38,7 @@ public class StateStore extends MemoryProvider implements StateStoreProvider {
 	@Override
 	public void save(VariablePayload payload) {
 		this.variables.add(payload);
-		this.firePropertyChange​("variable", payload, payload);
+//		this.firePropertyChange​("variable", payload, payload);
 //		System.out.println("Seq: " + count++ + ", Mode: " + getMode() + ", Variable to save: " + payload.getContent());
 	}
 

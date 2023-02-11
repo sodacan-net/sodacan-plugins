@@ -50,7 +50,7 @@ public class MBKTopic implements MBTopic, Closeable {
 	private long endOffset;
 	
 	private String topicName;
-	private String brokers;
+	private Map<String,String> configProperties;
 
 	/**
 	 * Construct a topic for consuming records
@@ -58,14 +58,18 @@ public class MBKTopic implements MBTopic, Closeable {
 	 * @param topicName
 	 * @param nextOffset
 	 */
-	protected MBKTopic(String brokers, String topicName, long nextOffset) {
+	protected MBKTopic(Map<String,String> configProperties, String topicName, long nextOffset) {
 		this.nextOffset = nextOffset;
 		this.topicName = topicName;
-		this.brokers = brokers;
+		this.configProperties = configProperties;
 	}
 	protected Consumer<String, String> openConsumer() {
 		Consumer<String, String> consumer = null;
 		Properties properties = new Properties();
+		String brokers = configProperties.get("brokers");
+		if (brokers==null || brokers.isEmpty()) {
+			throw new RuntimeException("brokers connection not specified in MessageBus config");
+		}
 		properties.setProperty("bootstrap.servers", brokers);
 //		properties.setProperty("group.id", "test");
 		properties.setProperty("enable.auto.commit", "false");
@@ -104,7 +108,7 @@ public class MBKTopic implements MBTopic, Closeable {
 						MBRecord mbr = new MBKRecord(record);
 						mbrs.put(record.key(), mbr);
 					}
-					if (record.offset()==endOffset) {
+					if (record.offset()==endOffset-1) {
 						return mbrs;
 					}
 				}
@@ -126,29 +130,7 @@ public class MBKTopic implements MBTopic, Closeable {
 		}
 		
 	}
-//	public void consume() {
-//	    while (true) {
-//	         ConsumerRecords<K, V> records = consumer.poll(Duration.ofMillis(500));
-//	         if (!follow && records.count()==0) {
-//	        	 sendAll();
-//	        	 break;
-//	         }
-//	         for (ConsumerRecord<K, V> record : records) {
-//	        	 TopicPartition tp = new TopicPartition(record.topic(),record.partition());
-//	        	 logger.debug("Record from topic: " + topicName + " Offset: " + record.offset() + " key: " + record.key());
-////	        	 Instant timestamp = Instant.ofEpochMilli(record.timestamp());
-////	        	 System.out.println(timestamp);
-//	        	 // Are we done with preload phase
-//	        	 if (record.offset() >=(endOffsets.get(tp)-1)) {
-//		        	 processRecord( record.key(), record.value());
-//	        		 sendAll();
-//	        		 if (follow==false) return;
-//	        	 }
-//	        	 processRecord( record.key(), record.value());
-//	         }
-//	    }
-//
-//	}
+	
 	@Override
 	public String getTopicName() {
 		return topicName;

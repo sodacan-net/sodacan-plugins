@@ -33,13 +33,17 @@ public class MBM implements MB {
 	
 	private Map<String, Queue<MBMRecord>> topics = new ConcurrentHashMap<>();
 
-	public static MBM createInstance() {
+	private Map<String,String> configProperties;
+
+
+	public static MBM createInstance(Map<String,String> configProperties) {
 		MBM instance;
-		instance = new MBM();
+		instance = new MBM(configProperties);
 		return instance;
 	}
 
-	private MBM() {
+	private MBM(Map<String,String> configProperties) {
+		this.configProperties = configProperties;
 		logger.debug("Memory Based Message Bus Created");
 	}
 
