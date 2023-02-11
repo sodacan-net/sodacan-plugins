@@ -13,15 +13,5 @@
 	    <artifactId>kafka-clients</artifactId>
 	    <version>${kafka.version}</version>
 	</dependency>
-	<dependency>
-		<groupId>net.sodacan</groupId>
-		<artifactId>mode-api</artifactId>
-		<version>${project.parent.version}</version>
-	</dependency>
-	<dependency>
-		<groupId>net.sodacan</groupId>
-		<artifactId>utility</artifactId>
-		<version>${project.parent.version}</version>
-	</dependency>
   </dependencies>
 </project>

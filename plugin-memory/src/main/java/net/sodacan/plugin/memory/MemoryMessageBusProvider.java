@@ -14,6 +14,8 @@
  */
 package net.sodacan.plugin.memory;
 
+import java.util.Map;
+
 import com.google.auto.service.AutoService;
 
 import net.sodacan.config.Config;
@@ -26,9 +28,9 @@ public class MemoryMessageBusProvider extends MemoryProvider implements MessageB
 
 	MB mb = null;
 	@Override
-	public MB getMB(Config config) {
+	public MB getMB(Map<String,String> configProperties) {
 		if (mb==null) {
-			mb = MBM.createInstance();
+			mb = MBM.createInstance(configProperties);
 		}
 		return mb;
 	}

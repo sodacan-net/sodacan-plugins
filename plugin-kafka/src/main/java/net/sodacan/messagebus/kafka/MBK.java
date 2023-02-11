@@ -62,15 +62,15 @@ public class MBK implements MB {
 	private static final int WAIT_SECONDS = 5;
 	private static MBK instance;
 	private AdminClient adminClient;
-	private String brokers;
 	private KafkaProducer<String,String> producer = null;
-	
-	public static MB createInstance(String brokers) {
+
+	private Map<String,String> configProperties;
+	public static MB createInstance(Map<String,String> configProperties) {
 		if (instance != null) {
 			return instance;
 //			throw new RuntimeException("MBK already initialized");
 		}
-		instance = new MBK(brokers);
+		instance = new MBK(configProperties);
 		return instance;
 	}
 
@@ -81,9 +81,13 @@ public class MBK implements MB {
 		return instance;
 	}
 
-	private MBK(String brokers) {
-		this.brokers = brokers;
+	private MBK(Map<String,String> configProperties) {
+		this.configProperties = configProperties;
 		Properties props = new Properties();
+		String brokers = configProperties.get("brokers");
+		if (brokers==null || brokers.isEmpty()) {
+			throw new RuntimeException("brokers connection not specified in " + configProperties.get("pluginType"));
+		}
 		props.put("bootstrap.servers", brokers);
 		logger.debug("Connect Admin Client to broker(s) " + brokers);
 		adminClient = AdminClient.create(props);
@@ -221,12 +225,20 @@ public class MBK implements MB {
 
 	@Override
 	public MBTopic openTopic(String topicName, long nextTopic) {
-		return new MBKTopic( brokers, topicName, nextTopic );
+		
+		return new MBKTopic( configProperties, topicName, nextTopic );
 	}
 
 	protected void setupProducer() {
+		String brokers = configProperties.get("brokers");
+		String lingerMsString = configProperties.get("linger.ms");
+		long lingerMs;
+		if (lingerMsString==null || lingerMsString.isEmpty()) {
+			lingerMs = 0l;
+		} else {
+			lingerMs = Long.parseLong(configProperties.get("linger.ms"));
+		}
 		Properties props = new Properties();
-		Long lingerMs = 1L;		// *** Should be from Config
 		props.put("bootstrap.servers", brokers);
 		props.put("linger.ms", lingerMs);
 		props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");

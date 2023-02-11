@@ -54,5 +54,9 @@ public class MBMRecord implements MBRecord {
 		return value;
 	}
 	
-	
+	@Override
+	public String toString() {
+		return getValue();
+	}
+
 }

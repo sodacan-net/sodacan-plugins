@@ -49,5 +49,10 @@ public class MBKRecord implements MBRecord {
 		
 		return realRecord.value();
 	}
+	
+	@Override
+	public String toString() {
+		return getValue();
+	}
 
 }
