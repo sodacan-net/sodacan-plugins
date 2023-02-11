@@ -14,13 +14,11 @@
  */
 package net.sodacan.messagebus.mem;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +31,7 @@ public class MBM implements MB {
 	
 	private Map<String, Queue<MBMRecord>> topics = new ConcurrentHashMap<>();
 
+	@SuppressWarnings("unused")
 	private Map<String,String> configProperties;
 
 

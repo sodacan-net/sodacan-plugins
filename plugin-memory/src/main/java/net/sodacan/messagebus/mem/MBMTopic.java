@@ -14,6 +14,7 @@
  */
 package net.sodacan.messagebus.mem;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -87,5 +88,9 @@ public class MBMTopic implements MBTopic {
 			}
 		}
 		return map;
+	}
+
+	@Override
+	public void close() throws IOException {
 	}			
 }

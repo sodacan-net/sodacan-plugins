@@ -20,13 +20,14 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
@@ -42,8 +43,6 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.kafka.clients.admin.Config;
 
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.MBTopic;
@@ -225,7 +224,6 @@ public class MBK implements MB {
 
 	@Override
 	public MBTopic openTopic(String topicName, long nextTopic) {
-		
 		return new MBKTopic( configProperties, topicName, nextTopic );
 	}
 

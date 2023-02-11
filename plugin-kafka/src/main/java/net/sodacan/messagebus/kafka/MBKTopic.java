@@ -15,7 +15,6 @@
 package net.sodacan.messagebus.kafka;
 
 import java.beans.PropertyChangeListener;
-import java.io.Closeable;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -40,7 +39,7 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBKTopic implements MBTopic, Closeable {
+public class MBKTopic implements MBTopic {
 
 	// The nextOffset is where we desire to start consuming
 	private long nextOffset;
@@ -48,6 +47,8 @@ public class MBKTopic implements MBTopic, Closeable {
 	// topic being opened. This is needed for a snapshot function which returns records up to this point
 	// even if, while fetching, additional records have been added.
 	private long endOffset;
+	
+	private Duration poll_timeout_ms = Duration.ofMillis(200);
 	
 	private String topicName;
 	private Map<String,String> configProperties;
@@ -62,7 +63,12 @@ public class MBKTopic implements MBTopic, Closeable {
 		this.nextOffset = nextOffset;
 		this.topicName = topicName;
 		this.configProperties = configProperties;
+		String pollTimeout = configProperties.get("poll.timeout.ms");
+		if (pollTimeout!=null) {
+			poll_timeout_ms = Duration.ofMillis(Integer.parseInt(pollTimeout));
+		}
 	}
+	
 	protected Consumer<String, String> openConsumer() {
 		Consumer<String, String> consumer = null;
 		Properties properties = new Properties();
@@ -86,11 +92,12 @@ public class MBKTopic implements MBTopic, Closeable {
 		endOffset = endOffsets.get(partition);
 		return consumer;
 	}
+
 	/**
 	 * <p>Load up a reduced list of records from this topic. Only the most recent of any
 	 * key is in the list.</p>
-	 * <p>This a snapshot usually begins at offset zero and includes everything up 
-	 * the end offset known when the topic was opened. This also accounts for deleted keys
+	 * <p>A snapshot usually begins at offset zero and includes everything up 
+	 * the end offset known when the topic was opened. A snapshot also accounts for deleted keys
 	 * (tombstones in Kafka).</p>
 	 */
 	public Map<String, MBRecord> snapshot() {
@@ -98,7 +105,7 @@ public class MBKTopic implements MBTopic, Closeable {
 		Consumer<String,String> consumer = openConsumer();
 		try {
 			while (true) {
-				ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(200));
+				ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
 				for (ConsumerRecord<String,String> record : records ) {
 					// If no value, then remove this key from the map. Otherwise, put the updated
 					// Record into the map.
@@ -126,7 +133,6 @@ public class MBKTopic implements MBTopic, Closeable {
 			if (!(e instanceof InterruptedException || e instanceof InterruptException)) {
 				throw new RuntimeException("Problem consuming from topic: " + topicName, e);
 			}
-			// In
 		}
 		
 	}
@@ -141,6 +147,10 @@ public class MBKTopic implements MBTopic, Closeable {
 		// TODO Auto-generated method stub
 		return null;
 	}
+	/**
+	 * For snapshot requests, we close before returning the snapshot.
+	 * For follows, we need to chase down any existing threads and kill them.
+	 */
 	@Override
 	public void close() throws IOException {
 		
