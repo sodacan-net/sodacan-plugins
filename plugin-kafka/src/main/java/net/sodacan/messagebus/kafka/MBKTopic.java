@@ -74,7 +74,7 @@ public class MBKTopic implements MBTopic {
 	 */
 	protected MBKTopic(Map<String,String> configProperties, String topicName, long nextOffset) {
 		this.nextOffset = nextOffset;
-		this.topicName = topicName;
+		this.topicName = topicName;		
 		this.configProperties = configProperties;
 		String pollTimeout = configProperties.get("poll.timeout.ms");
 		if (pollTimeout!=null) {
@@ -117,7 +117,7 @@ public class MBKTopic implements MBTopic {
 		 Map<String, MBRecord> mbrs = new HashMap<>();
 		Consumer<String,String> consumer = openConsumer();
 		try {
-			while (true) {
+			while (endOffset>0) {
 				ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
 				for (ConsumerRecord<String,String> record : records ) {
 					// If no value, then remove this key from the map. Otherwise, put the updated
@@ -133,6 +133,7 @@ public class MBKTopic implements MBTopic {
 					}
 				}
 			}
+			return mbrs;
 		} catch (Throwable e) {
 			throw new RuntimeException("Problem consuming from topic: " + topicName, e);
 		} finally {
@@ -176,10 +177,10 @@ public class MBKTopic implements MBTopic {
 							queue.offer(new MBKRecord(record));
 						}
 					}
-		         } catch (WakeupException e) {
+		        } catch (WakeupException e) {
 		             // Ignore exception if closing
 		             if (!closed.get()) throw e;
-		          } finally {
+		        } finally {
                 	consumer.close();
 				}
 		    }

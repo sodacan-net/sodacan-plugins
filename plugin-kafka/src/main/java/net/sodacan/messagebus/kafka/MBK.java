@@ -17,11 +17,13 @@ package net.sodacan.messagebus.kafka;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -44,6 +46,7 @@ import org.apache.kafka.common.config.TopicConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.sodacan.SodacanException;
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.MBTopic;
 
@@ -91,10 +94,10 @@ public class MBK implements MB {
 		adminClient = AdminClient.create(props);
 	}
 
-	public List<String> listTopics() {
+	public Set<String> listTopics() {
 		try {
 			// List the topics available
-			List<String> topicNames = new LinkedList<String>();
+			Set<String> topicNames = new HashSet<String>();
 			ListTopicsResult ltr = adminClient.listTopics();
 			for (String name : ltr.names().get()) {
 				topicNames.add(name);
@@ -222,11 +225,16 @@ public class MBK implements MB {
 	}
 	
 	/**
-	 * Construct a topic ready for a snapshot or follow operation.
-	 * A topic is a one-time use object.
+	 * Construct a topic ready for a snapshot or follow operation. The topic must exist.
+	 * A topic is a one-time use object. 
 	 */
 	@Override
 	public MBTopic openTopic(String topicName, long nextOffset) {
+		// Validate the topic
+		Set<String> topic = listTopics();
+		if (!topic.contains(topicName)) {
+			throw new SodacanException("Unknown topic name: " + topicName);
+		}
 		return new MBKTopic( configProperties, topicName, nextOffset );
 	}
 

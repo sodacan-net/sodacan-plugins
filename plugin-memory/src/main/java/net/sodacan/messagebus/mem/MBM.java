@@ -14,8 +14,8 @@
  */
 package net.sodacan.messagebus.mem;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -47,8 +47,8 @@ public class MBM implements MB {
 	}
 
 	@Override
-	public List<String> listTopics() {
-		return List.copyOf(topics.keySet());
+	public Set<String> listTopics() {
+		return Set.copyOf(topics.keySet());
 	}
 
 	@Override

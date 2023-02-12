@@ -18,9 +18,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -36,6 +38,11 @@ public class MBMTopic implements MBTopic {
 	long nextOffset;
 	
 	private BlockingQueue<MBMRecord> queue;
+	private BlockingQueue<MBRecord> followQueue;
+	private AtomicBoolean closed;
+	private Future<?> followFuture;
+	
+	private static ExecutorService executorService = Executors.newCachedThreadPool();
 	
 	/**
 	 * We get passed in a pointer to the topic's queue so that we can serve records from it.
@@ -78,12 +85,27 @@ public class MBMTopic implements MBTopic {
 
 	@Override
 	public BlockingQueue<MBRecord> follow() {
-		return null; ///**********************
+		followQueue = new LinkedBlockingQueue<MBRecord>();
+		followFuture = executorService.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					while (!closed.get()) {
+						followQueue.offer(queue.take());
+					}
+				} catch (InterruptedException e) {
+					followQueue.offer(new MBMRecord());
+				}
+				System.out.println("Leaving follow");
+			}
+		});
+		return followQueue;
 	}
 
 	@Override
 	public void stop() {
-//    	closed.set(true);
+    	closed.set(true);
+    	followFuture.cancel(true);
 //    	consumer.wakeup();
 	}
 }
