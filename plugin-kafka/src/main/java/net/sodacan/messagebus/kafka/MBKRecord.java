@@ -24,6 +24,10 @@ public class MBKRecord implements MBRecord {
 	public MBKRecord( ConsumerRecord<String, String> realRecord ) {
 		this.realRecord = realRecord;
 	}
+	public MBKRecord() {
+		this.realRecord = null;
+	}
+	
 	@Override
 	public String getTopic() {
 		return realRecord.topic();
@@ -53,6 +57,11 @@ public class MBKRecord implements MBRecord {
 	@Override
 	public String toString() {
 		return getValue();
+	}
+	
+	@Override
+	public boolean isEOF() {
+		return (realRecord==null);
 	}
 
 }

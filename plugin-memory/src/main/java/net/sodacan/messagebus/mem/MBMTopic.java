@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -29,7 +30,7 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBMTopic implements MBTopic, Supplier<MBRecord>{
+public class MBMTopic implements MBTopic {
 	private String topicName;
 	long timestamp;
 	long nextOffset;
@@ -76,16 +77,13 @@ public class MBMTopic implements MBTopic, Supplier<MBRecord>{
 	}
 
 	@Override
-	public Stream<MBRecord> follow() {
-		return Stream.generate(this);
+	public BlockingQueue<MBRecord> follow() {
+		return null; ///**********************
 	}
 
 	@Override
-	public MBRecord get() {
-		try {
-			return queue.take();
-		} catch (InterruptedException e) {
-			throw new RuntimeException("Error getting item from queue in MBMTopic",e);
-		}
-	}			
+	public void stop() {
+//    	closed.set(true);
+//    	consumer.wakeup();
+	}
 }

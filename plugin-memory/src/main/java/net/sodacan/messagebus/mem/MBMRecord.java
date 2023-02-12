@@ -37,7 +37,9 @@ public class MBMRecord implements MBRecord {
 		this.key = key;
 		this.value = value;
 	}
-
+	public MBMRecord() {
+		this.topic = null;
+	}
 	public String getTopic() {
 		return topic;
 	}
@@ -57,6 +59,11 @@ public class MBMRecord implements MBRecord {
 	@Override
 	public String toString() {
 		return getValue();
+	}
+
+	@Override
+	public boolean isEOF() {
+		return (topic==null);
 	}
 
 }

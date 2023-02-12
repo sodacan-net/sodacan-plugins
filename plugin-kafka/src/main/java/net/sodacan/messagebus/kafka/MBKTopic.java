@@ -18,18 +18,21 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -40,7 +43,8 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBKTopic implements MBTopic, Supplier<MBRecord> {
+public class MBKTopic implements MBTopic {
+	public static final int QUEUE_SIZE = 20;
 
 	// The nextOffset is where we desire to start consuming
 	private long nextOffset;
@@ -53,11 +57,15 @@ public class MBKTopic implements MBTopic, Supplier<MBRecord> {
 	
 	private String topicName;
 	private Map<String,String> configProperties;
+
 	// Only used for a follow, not a snapshot
-	private Consumer<String,String> followConsumer;
-	private ConsumerRecords<String, String> followRecords;
-	private Iterator<ConsumerRecord<String, String>> followIterator;
+	private BlockingQueue<MBRecord> queue;
+	private AtomicBoolean closed;
+	private Consumer<String,String> consumer;
 	
+	private static ExecutorService executorService = Executors.newCachedThreadPool();
+
+
 	/**
 	 * Construct a topic for consuming records
 	 * @param brokers
@@ -154,26 +162,37 @@ public class MBKTopic implements MBTopic, Supplier<MBRecord> {
 	 * </p>
 	 */
 	@Override
-	public Stream<MBRecord> follow() {
-		followConsumer = openConsumer();
-		followRecords = null;
-		return Stream.generate(this);
+	public BlockingQueue<MBRecord> follow() {
+		closed = new AtomicBoolean(false);
+		queue = new LinkedBlockingQueue<MBRecord>(QUEUE_SIZE);
+		executorService.execute(new Runnable() {
+			@Override 
+		    public void run() {
+				try {
+					consumer = openConsumer();
+					while (!closed.get()) {
+						ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
+						for (ConsumerRecord<String,String> record : records ) {
+							queue.offer(new MBKRecord(record));
+						}
+					}
+		         } catch (WakeupException e) {
+		             // Ignore exception if closing
+		             if (!closed.get()) throw e;
+		          } finally {
+                	consumer.close();
+				}
+		    }
+		});
+//		followStream = queue.stream();
+		return queue;
 	}
-
+	
 	@Override
-	public MBRecord get() {
-		while (true) {
-			// If no records, wait for some to arrive
-			if (followRecords==null) {
-				followRecords = followConsumer.poll(poll_timeout_ms);
-				followIterator = followRecords.iterator();
-			}
-			if (followIterator.hasNext()) {
-				return new MBKRecord(followIterator.next());
-			} else {
-				followRecords = null;
-			}
-		}
+	public void stop() {
+		queue.offer(new MBKRecord());
+    	closed.set(true);
+    	consumer.wakeup();
 	}
 
 }
