@@ -23,6 +23,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.sodacan.SodacanException;
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.MBTopic;
 
@@ -77,9 +78,8 @@ public class MBM implements MB {
 
 	@Override
 	public MBTopic openTopic(String topicName, long offset) {
-		if (topics.containsKey(topicName)) {
-			logger.debug("Topic " + topicName + " does not exist");
-			return null;
+		if (!topics.containsKey(topicName)) {
+			throw new SodacanException("Topic " + topicName + " does not exist");
 		}
 		return new MBMTopic(topicName,offset,topics.get(topicName));
 	}
