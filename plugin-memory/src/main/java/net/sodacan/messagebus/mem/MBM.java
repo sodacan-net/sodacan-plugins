@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import net.sodacan.SodacanException;
 import net.sodacan.messagebus.MB;
 import net.sodacan.messagebus.MBTopic;
+import net.sodacan.mode.Mode;
+import net.sodacan.mode.spi.ClockProvider;
 
 public class MBM implements MB {
 	private final static Logger logger = LoggerFactory.getLogger(MBM.class);
@@ -90,7 +92,8 @@ public class MBM implements MB {
 		if (queue==null) {
 			throw new RuntimeException("Unknown Topic Name: " + topicName);
 		}
-		long timestamp = 0;	//**********************************************
+		ClockProvider clockProvider = Mode.getInstance().getClockProvider();
+		long timestamp = clockProvider.getTimestamp();
 		MBMRecord record = new MBMRecord( topicName, timestamp, queue.size(), key, value);
 		queue.offer(record);
 	}

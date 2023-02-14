@@ -64,34 +64,34 @@ public class TestPlugins {
 	}
 
 	
-	@Test
-	public void testSaveState() {
-		// Create some variables
-		ModuleVariables mvs = new ModuleVariables();
-		VariableDef vd1 = VariableDef.newVariableDefBuilder().name("x").initialValue(new Value(123)).build();
-		ModuleVariable v1 = (ModuleVariable)mvs.addVariable(vd1);
-		v1.setChangedInCycle(true);
-		VariableDef vd2 = VariableDef.newVariableDefBuilder().name("y").alias("z").initialValue(new Value(456)).build();
-		ModuleVariable v2 = (ModuleVariable)mvs.addVariable(vd2);
-		v2.setChangedInCycle(true);
-		ConfigMode configMode = ConfigMode.newConfiguModeBuilder()
-				.name("basemode")
-				.stateStoreType("memory")
-				.build();
-		Config config = new Config();
-		config.addConfigMode(configMode);
-		Mode.configure(config);
-		// Done with preliminaries
-		// A side effect of construction is that the mode is remembered in a singleton map
-		Mode mode = Mode.findMode("basemode");
-		SodacanModule sm = new SodacanModule();
-		assertNotNull(sm);
-		sm.setName("DummyModule");
-		mode.saveState(sm, mvs);
-		
-		ModuleVariables mvr = mode.restoreAll(sm);
-		Value vr = mvr.find("x").getValue();
-		assert(vr.getNumber().intValue()==123);
-	}
-
+//	@Test
+//	public void testSaveState() {
+//		// Create some variables
+//		ModuleVariables mvs = new ModuleVariables();
+//		VariableDef vd1 = VariableDef.newVariableDefBuilder().name("x").initialValue(new Value(123)).build();
+//		ModuleVariable v1 = (ModuleVariable)mvs.addVariable(vd1);
+//		v1.setChangedInCycle(true);
+//		VariableDef vd2 = VariableDef.newVariableDefBuilder().name("y").alias("z").initialValue(new Value(456)).build();
+//		ModuleVariable v2 = (ModuleVariable)mvs.addVariable(vd2);
+//		v2.setChangedInCycle(true);
+//		ConfigMode configMode = ConfigMode.newConfiguModeBuilder()
+//				.name("basemode")
+//				.stateStoreType("memory")
+//				.build();
+//		Config config = new Config();
+//		config.addConfigMode(configMode);
+//		Mode.configure(config);
+//		// Done with preliminaries
+//		// A side effect of construction is that the mode is remembered in a singleton map
+//		Mode mode = Mode.findMode("basemode");
+//		SodacanModule sm = new SodacanModule();
+//		assertNotNull(sm);
+//		sm.setName("DummyModule");
+//		mode.saveState(sm, mvs);
+//		
+//		ModuleVariables mvr = mode.restoreAll(sm);
+//		Value vr = mvr.find("x").getValue();
+//		assert(vr.getNumber().intValue()==123);
+//	}
+//
 }

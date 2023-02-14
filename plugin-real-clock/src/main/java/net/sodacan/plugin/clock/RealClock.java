@@ -14,8 +14,8 @@
  */
 package net.sodacan.plugin.clock;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.function.Supplier;
 
 import com.google.auto.service.AutoService;
 
@@ -23,7 +23,7 @@ import net.sodacan.mode.spi.ClockProvider;
 import net.sodacan.mode.spi.Plugin;
 
 @AutoService(ClockProvider.class)
-public class RealClock extends Plugin implements ClockProvider, Supplier<Instant> {
+public class RealClock extends Plugin implements ClockProvider {
 	public static final String PLUGIN_TYPE = "real";
 	
 	@Override
@@ -33,13 +33,6 @@ public class RealClock extends Plugin implements ClockProvider, Supplier<Instant
 		} else {
 			return false;
 		}
-	}
-
-	/**
-	 * We act as supplier of instant's from the clock
-	 */
-	public Supplier<Instant> getSupplier() {
-		return this;
 	}
 
 	/**
@@ -60,6 +53,15 @@ public class RealClock extends Plugin implements ClockProvider, Supplier<Instant
 	public long getTimestamp() {
 		return Instant.now().toEpochMilli();
 	}
+	/**
+	 * Cannot advance a real clock
+	 * Ignore this request
+	 */
+	@Override
+	public void advanceClock( Duration duration) {
+		
+	}
+
 	@Override
 	public void close() {
 		

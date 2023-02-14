@@ -14,21 +14,21 @@
  */
 package net.sodacan.plugin.clock;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.function.Supplier;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import com.google.auto.service.AutoService;
 
 import net.sodacan.mode.spi.ClockProvider;
 import net.sodacan.mode.spi.Plugin;
 
-
 @AutoService(ClockProvider.class)
-public class StaticClock extends Plugin implements ClockProvider, Supplier<Instant> {
+public class StaticClock extends Plugin implements ClockProvider {
 	
-	public static final String PLUGIN_TYPE = "test";
-	
-	private ManualClock clock = new ManualClock();
+	public static final String PLUGIN_TYPE = "static";
+	private Instant time;
 	
 	@Override
 	public boolean isMatch(String pluginTypes) {
@@ -40,30 +40,35 @@ public class StaticClock extends Plugin implements ClockProvider, Supplier<Insta
 	}
 
 	/**
-	 * We act as supplier of instant's from the clock
-	 */
-	public Supplier<Instant> getSupplier() {
-		return this;
-	}
-
-	/**
-	 * When asked, provide the time on our (static) clock
+	 * When asked, provide the time on our (static) clock, always in Z time
 	 */
 	public Instant get() {
-		return clock.instant();
+		return time;
 	}
 
 	/**
 	 * A Manual clock allows the time to be set
 	 */
 	public void setClock(int year, int month, int day, int hour, int minute, int second) {
-		clock.setTime(year, month, day, hour, minute, second);
+		long epochSeconds = LocalDateTime.of(year,month,day, hour, minute, second).toEpochSecond(ZoneOffset.of("Z"));
+		time = Instant.ofEpochSecond(epochSeconds);
 	}
 
 	@Override
 	public long getTimestamp() {
-		return clock.millis();
+		return time.getEpochSecond();
 	}
+	
+	/**
+	  * Advance the clock by the specified duration such as 
+	  * <code> advanceClock(Duration.ofSeconds(1); </code>
+	 */
+	@Override
+	public void advanceClock( Duration duration) {
+		time = time.plus(duration);
+	}
+
+
 	@Override
 	public void close() {
 		
