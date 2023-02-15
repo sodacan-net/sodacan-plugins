@@ -14,6 +14,8 @@
  */
 package net.sodacan.messagebus.kafka;
 
+import java.time.Instant;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import net.sodacan.messagebus.MBRecord;
@@ -50,13 +52,19 @@ public class MBKRecord implements MBRecord {
 
 	@Override
 	public String getValue() {
-		
 		return realRecord.value();
 	}
 	
 	@Override
 	public String toString() {
-		return getValue();
+		StringBuffer sb = new StringBuffer();
+		sb.append(getValue());
+		sb.append("  {");
+		sb.append(getOffset());
+		sb.append(',');
+		sb.append(Instant.ofEpochMilli(getTimestamp()).toString());
+		sb.append('}');
+		return sb.toString();
 	}
 	
 	@Override
