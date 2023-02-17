@@ -18,9 +18,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.concurrent.BlockingQueue;
 
 import com.google.auto.service.AutoService;
 
+import net.sodacan.messagebus.MBRecord;
 import net.sodacan.mode.spi.ClockProvider;
 import net.sodacan.mode.spi.Plugin;
 
@@ -72,6 +74,11 @@ public class StaticClock extends Plugin implements ClockProvider {
 	@Override
 	public void close() {
 		
+	}
+
+	@Override
+	public BlockingQueue<MBRecord> follow() {
+		return null;
 	}
 
 }

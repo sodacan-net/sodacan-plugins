@@ -58,6 +58,10 @@ public class MBKRecord implements MBRecord {
 	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
+		sb.append(getTopic());
+		sb.append(": ");
+		sb.append(getKey());
+		sb.append("=");
 		sb.append(getValue());
 		sb.append("  {");
 		sb.append(getOffset());

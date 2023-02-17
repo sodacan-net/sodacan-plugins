@@ -32,7 +32,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.WakeupException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -44,6 +45,7 @@ import net.sodacan.messagebus.MBTopic;
  *
  */
 public class MBKTopic implements MBTopic {
+	private final static Logger logger = LoggerFactory.getLogger(MBKTopic.class);
 	public static final int QUEUE_SIZE = 20;
 
 	// The nextOffset is where we desire to start consuming
@@ -135,7 +137,14 @@ public class MBKTopic implements MBTopic {
 			}
 			return mbrs;
 		} catch (Throwable e) {
-			throw new RuntimeException("Problem consuming from topic: " + topicName, e);
+			logger.error("Problem consuming from topic: " + topicName);
+			logger.error(e.getMessage());
+			Throwable t = e.getCause();
+			while (t!=null) {
+				logger.error("  " + t.getMessage());
+				t = t.getCause();
+			}
+			return null;
 		} finally {
 			consumer.close();
 		}
@@ -174,12 +183,14 @@ public class MBKTopic implements MBTopic {
 					while (!closed.get()) {
 						ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
 						for (ConsumerRecord<String,String> record : records ) {
-							queue.offer(new MBKRecord(record));
+							queue.put(new MBKRecord(record));
 						}
 					}
-		        } catch (WakeupException e) {
+		        } catch (Exception e) {
 		             // Ignore exception if closing
-		             if (!closed.get()) throw e;
+		             if (!closed.get()) {
+		            	 throw new RuntimeException("Error from Kafka topic, existing this follow operation", e);
+		             }
 		        } finally {
                 	consumer.close();
 				}
