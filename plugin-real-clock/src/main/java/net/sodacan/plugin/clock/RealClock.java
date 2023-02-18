@@ -20,7 +20,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,13 +85,12 @@ public class RealClock extends Plugin implements ClockProvider, Runnable {
 	 * once every n seconds, without missing any ticks. We use the MessageBus record (MBRecord) for this purpose.
 	 */
 	@Override
-	public BlockingQueue<MBRecord> follow() {
-		queue = new LinkedBlockingQueue<MBRecord>(QUEUE_SIZE);
-		
+	public  Future<?> follow(BlockingQueue<MBRecord> queue) {
+		this.queue = queue;
 		// Setup our main loop
 		future = executorService.submit(this);
 		// Our caller will get evenly spaced ticks delivered through this queue.
-		return queue;
+		return future;
 	}	
 	
 	@Override

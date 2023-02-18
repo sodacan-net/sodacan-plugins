@@ -230,12 +230,26 @@ public class MBK implements MB {
 	 */
 	@Override
 	public MBTopic openTopic(String topicName, long nextOffset) {
+		Map<String,Long> topics = new HashMap<>();
+		topics.put(topicName, nextOffset);
+		return openTopics(topics);
+	}
+
+	/**
+	 * Construct  topic consumer. The topics must exist.
+	 * A topic is a one-time use object. 
+	 */
+	@Override
+	public MBTopic openTopics(Map<String,Long> topics) {
 		// Validate the topic
 		Set<String> topic = listTopics();
-		if (!topic.contains(topicName)) {
-			throw new SodacanException("Unknown topic name: " + topicName);
+		// Validate the topic names we're going to open
+		for (String t : topics.keySet()) {
+			if (!topic.contains(t)) {
+				throw new SodacanException("Unknown topic name: " + t);
+			}
 		}
-		return new MBKTopic( configProperties, topicName, nextOffset );
+		return new MBKTopic( configProperties, topics );
 	}
 
 	protected void setupProducer() {

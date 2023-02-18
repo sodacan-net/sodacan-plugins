@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Future;
 
 import com.google.auto.service.AutoService;
 
@@ -31,6 +32,8 @@ public class StaticClock extends Plugin implements ClockProvider {
 	
 	public static final String PLUGIN_TYPE = "static";
 	private Instant time;
+	
+	private BlockingQueue<MBRecord> queue;
 	
 	@Override
 	public boolean isMatch(String pluginTypes) {
@@ -77,7 +80,7 @@ public class StaticClock extends Plugin implements ClockProvider {
 	}
 
 	@Override
-	public BlockingQueue<MBRecord> follow() {
+	public Future<?> follow(BlockingQueue<MBRecord> queue) {
 		return null;
 	}
 

@@ -16,15 +16,18 @@ package net.sodacan.messagebus.kafka;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Future;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -32,6 +35,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,24 +48,20 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBKTopic implements MBTopic {
+public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 	private final static Logger logger = LoggerFactory.getLogger(MBKTopic.class);
-	public static final int QUEUE_SIZE = 20;
-
-	// The nextOffset is where we desire to start consuming
-	private long nextOffset;
-	// endOffset is a bit misleading since these queues are "forever". It means the end offset as of the
-	// topic being opened. This is needed for a snapshot function which returns records up to this point
-	// even if, while fetching, additional records have been added.
-	private long endOffset;
-	
 	private Duration poll_timeout_ms = Duration.ofMillis(200);
 	
-	private String topicName;
+	private Map<String,Long> topics;
+	private List<TopicPartition> partitions;
+	private Map<String,Long> endOffsets;
+	
+//	private String topicName;
 	private Map<String,String> configProperties;
 
+	private PriorityBlockingQueue<MBRecord> combinedQueue = new PriorityBlockingQueue<>(200, this);
+
 	// Only used for a follow, not a snapshot
-	private BlockingQueue<MBRecord> queue;
 	private AtomicBoolean closed;
 	private Consumer<String,String> consumer;
 	
@@ -74,10 +74,9 @@ public class MBKTopic implements MBTopic {
 	 * @param topicName
 	 * @param nextOffset
 	 */
-	protected MBKTopic(Map<String,String> configProperties, String topicName, long nextOffset) {
-		this.nextOffset = nextOffset;
-		this.topicName = topicName;		
+	protected MBKTopic(Map<String,String> configProperties, Map<String,Long> topics) {
 		this.configProperties = configProperties;
+		this.topics = topics;
 		String pollTimeout = configProperties.get("poll.timeout.ms");
 		if (pollTimeout!=null) {
 			poll_timeout_ms = Duration.ofMillis(Integer.parseInt(pollTimeout));
@@ -97,15 +96,65 @@ public class MBKTopic implements MBTopic {
 		properties.setProperty("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		properties.setProperty("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		consumer = new KafkaConsumer<>(properties);
-		TopicPartition partition = new TopicPartition(topicName, 0);
-		List<TopicPartition> partitions = Arrays.asList(partition);
+		partitions = new LinkedList<TopicPartition>();
+		for (Entry<String,Long> e : topics.entrySet()) {
+			TopicPartition partition = new TopicPartition(e.getKey(), 0);
+			partitions.add(partition);
+		}
 		consumer.assign(partitions);
-		// Get positioned
-		consumer.seek(partition,nextOffset);
-		// Get the ending offset, if any
-		Map<TopicPartition,Long> endOffsets = consumer.endOffsets(partitions);
-		endOffset = endOffsets.get(partition);
+		// Get positioned for each topic
+		for (TopicPartition tp : partitions) {
+			Long offset = topics.get(tp.topic());
+			if (offset==null) {
+				offset = 0L;
+			}
+			consumer.seek(tp,offset+1);
+		}
+		// Get the ending offset for each topic
+		Map<TopicPartition,Long> oe = consumer.endOffsets(partitions);
+		endOffsets = new HashMap<>();
+		for (Entry<TopicPartition, Long> e : oe.entrySet()) {
+			// If the offset is zero, don't even bother putting it in the map
+			if (e.getValue()!=0) {
+				endOffsets.put(e.getKey().topic(), e.getValue());
+			}
+		}
 		return consumer;
+	}
+	/**
+	 * If we reach the end of a topic, remove it from the endOffsets map
+	 * @param record
+	 */
+	protected void checkEndOffsets(MBRecord record) {
+		if (endOffsets.isEmpty()) {
+			return;
+		}
+		Long endOffset = endOffsets.get(record.getTopic());
+		if (endOffset==null) {
+			return;
+		}
+		endOffset--;
+		if (record.getOffset()>=endOffset) {
+			endOffsets.remove(record.getTopic());
+		}
+	}
+	
+	/**
+	 * Load up the priority queue so that messages are sorted by timestamp.
+	 * This method doesn't wait, so it should be called from a sleep loop.
+	 * @Returns true if any results were added to the priority Queue
+	 * @throws InterruptedException
+	 */
+	public boolean loadCombinedQueue() throws InterruptedException {
+		while (!endOffsets.isEmpty()) {
+			ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
+			for (ConsumerRecord<String,String> record : records ) {
+				MBRecord mbr = new MBKRecord(record);
+				combinedQueue.put(mbr);
+				checkEndOffsets( mbr );
+			}
+		}
+		return !combinedQueue.isEmpty();
 	}
 
 	/**
@@ -116,28 +165,23 @@ public class MBKTopic implements MBTopic {
 	 * (tombstones in Kafka).</p>
 	 */
 	public Map<String, MBRecord> snapshot() {
-		 Map<String, MBRecord> mbrs = new HashMap<>();
-		Consumer<String,String> consumer = openConsumer();
+		Map<String, MBRecord> mbrs = new HashMap<>();
+		consumer = openConsumer();
 		try {
-			while (endOffset>0) {
-				ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
-				for (ConsumerRecord<String,String> record : records ) {
-					// If no value, then remove this key from the map. Otherwise, put the updated
-					// Record into the map.
-					if (record.value()==null) {
-						mbrs.remove(record.key());
-					} else {
-						MBRecord mbr = new MBKRecord(record);
-						mbrs.put(record.key(), mbr);
-					}
-					if (record.offset()==endOffset-1) {
-						return mbrs;
-					}
+			while (loadCombinedQueue()) {
+				MBRecord record = combinedQueue.take();
+				// If no value, then remove this key from the map. Otherwise, put the updated
+				// Record into the map.
+				if (record.getValue()==null) {
+					mbrs.remove(record.getKey());
+				} else {
+					mbrs.put(record.getKey(), record);
 				}
+				checkEndOffsets( record );
 			}
-			return mbrs;
+		
 		} catch (Throwable e) {
-			logger.error("Problem consuming from topic: " + topicName);
+			logger.error("Problem consuming from topic(s): " + topics);
 			logger.error(e.getMessage());
 			Throwable t = e.getCause();
 			while (t!=null) {
@@ -148,13 +192,10 @@ public class MBKTopic implements MBTopic {
 		} finally {
 			consumer.close();
 		}
+		return mbrs;
+
 	}
 	
-	@Override
-	public String getTopicName() {
-		return topicName;
-	}
-
 	/**
 	 * For snapshot requests, we close before returning the snapshot.
 	 * For follows, we need to chase down any streams and kill them.
@@ -162,6 +203,25 @@ public class MBKTopic implements MBTopic {
 	@Override
 	public void close() throws IOException {
 		
+	}
+	/**
+	 * Load up the priority queue so that messages are sorted by timestamp.
+	 * This method doesn't wait, so it should be called from a sleep loop.
+	 * @Returns true if any results were added to the priority Queue
+	 * @throws InterruptedException
+	 */
+	public boolean loadFollowQueue() throws InterruptedException {
+		while (true) {
+			ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
+			if (records.isEmpty()) {
+				break;
+			}
+			for (ConsumerRecord<String,String> record : records ) {
+				MBRecord mbr = new MBKRecord(record);
+				combinedQueue.put(mbr);
+			}
+		}
+		return !combinedQueue.isEmpty();
 	}
 
 	/**
@@ -172,39 +232,55 @@ public class MBKTopic implements MBTopic {
 	 * </p>
 	 */
 	@Override
-	public BlockingQueue<MBRecord> follow() {
+	public Future<?> follow(java.util.function.Consumer<MBRecord> cs) {
 		closed = new AtomicBoolean(false);
-		queue = new LinkedBlockingQueue<MBRecord>(QUEUE_SIZE);
 		executorService.execute(new Runnable() {
 			@Override 
 		    public void run() {
 				try {
 					consumer = openConsumer();
-					while (!closed.get()) {
-						ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
-						for (ConsumerRecord<String,String> record : records ) {
-							queue.put(new MBKRecord(record));
+					while (!Thread.currentThread().isInterrupted()) {
+						if (loadFollowQueue()) {
+							cs.accept( combinedQueue.take());
+						} else {
+							Thread.sleep(1000);
 						}
 					}
-		        } catch (Exception e) {
-		             // Ignore exception if closing
-		             if (!closed.get()) {
-		            	 throw new RuntimeException("Error from Kafka topic, existing this follow operation", e);
-		             }
-		        } finally {
+		        } catch (WakeupException e) {
+		        	logger.debug("Exiting MBKTopic");
+		        } catch (Throwable e) {
+		            	 logger.error("Error from Kafka topic, existing this follow operation", e);
+		        } 
+				finally {
                 	consumer.close();
 				}
 		    }
 		});
-//		followStream = queue.stream();
-		return queue;
+		Future<?> future = executorService.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					while (!Thread.currentThread().isInterrupted()) {
+						Thread.sleep(60*1000);
+					}
+		        } catch (Exception e) {
+		        	consumer.wakeup();
+				}
+			}
+			
+		});
+		return future;
 	}
 	
 	@Override
 	public void stop() {
-		queue.offer(new MBKRecord());
     	closed.set(true);
     	consumer.wakeup();
+	}
+
+	@Override
+	public int compare(MBRecord mbr1, MBRecord mbr2) {
+		return Long.compare( mbr1.getTimestamp(),mbr2.getTimestamp());
 	}
 
 }

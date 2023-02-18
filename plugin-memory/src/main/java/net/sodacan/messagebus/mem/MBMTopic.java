@@ -15,14 +15,19 @@
 package net.sodacan.messagebus.mem;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.function.Consumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
@@ -32,18 +37,20 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBMTopic implements MBTopic {
-	private String topicName;
-	long timestamp;
-	long nextOffset;
+public class MBMTopic implements MBTopic, Comparator<MBRecord> {
+	private final static Logger logger = LoggerFactory.getLogger(MBMTopic.class);
+
+	private Map<String,BlockingQueue<MBRecord>> queues;
+	private PriorityBlockingQueue<MBRecord> combinedQueue = new PriorityBlockingQueue<>(200, this);
 	
-	private BlockingQueue<MBMRecord> queue;
-	private BlockingQueue<MBRecord> followQueue;
-	private AtomicBoolean closed;
 	private Future<?> followFuture;
+	private Map<String,Long> topics;
+	
+	@SuppressWarnings("unused")
+	private Map<String,String> configProperties;
 	
 	private static ExecutorService executorService = Executors.newCachedThreadPool();
-	
+
 	/**
 	 * We get passed in a pointer to the topic's queue so that we can serve records from it.
 	 * This is the actual queue, not a snapshot
@@ -51,30 +58,54 @@ public class MBMTopic implements MBTopic {
 	 * @param nextOffset
 	 * @param queue
 	 */
-	public MBMTopic(String topicName, long nextOffset, BlockingQueue<MBMRecord> queue) {
-		this.topicName = topicName;
-		this.nextOffset = nextOffset;
-		this.queue = queue;
+	public MBMTopic(Map<String,String> configProperties, Map<String,Long> topics, Map<String,BlockingQueue<MBRecord>> queues) {
+		this.topics = topics;
+		this.configProperties = configProperties;
+		this.queues = queues;
 	}
-
-	@Override
-	public String getTopicName() {
-		return topicName;
+	
+	/**
+	 * Load up the priority so that messages are sorted by timestamp.
+	 * This method doesn't wait, so it should be called from a sleep loop.
+	 * @throws InterruptedException
+	 */
+	public boolean loadCombinedQueue() throws InterruptedException {
+		boolean result = false;
+		for (Entry<String, BlockingQueue<MBRecord>> e : queues.entrySet()) {
+			BlockingQueue<MBRecord> q = e.getValue();
+			Long startingOffset = topics.get(e.getKey());
+			if (startingOffset==null) {
+				startingOffset=0L;
+			}
+			while (q.peek()!=null) {
+				MBRecord r = q.take();
+				if (r.getOffset()>= startingOffset) {
+					result = true;
+					combinedQueue.put(r);
+				}
+			}
+		}
+		return result;
 	}
-
+	
 	/**
 	 * Return a reduced snapshot of the queue.
 	 */
 	@Override
 	public Map<String, MBRecord> snapshot() {
 		Map<String, MBRecord> map = new HashMap<>();
-		// If the value is null, delete that key from the map
-		for (MBMRecord record : queue) {
-			if (record.getValue()==null) {
-				map.remove(record.getKey());
-			} else {
-				map.put(record.getKey(), record);
+		try {
+			// Reduce the queues to the most recent of each key
+			while (loadCombinedQueue()) {
+				MBRecord record = combinedQueue.take();
+				// If the value is null, delete that key from the map
+				if (record.getValue()==null) {
+					map.remove(record.getKey());
+				} else {
+					map.put(record.getKey(), record);
+				}
 			}
+		} catch (InterruptedException e) {
 		}
 		return map;
 	}
@@ -84,28 +115,38 @@ public class MBMTopic implements MBTopic {
 	}
 
 	@Override
-	public BlockingQueue<MBRecord> follow() {
-		followQueue = new LinkedBlockingQueue<MBRecord>();
+	public void stop() {
+    	followFuture.cancel(true);
+	}
+
+	@Override
+	public Future<?> follow(Consumer<MBRecord> cs) {
 		followFuture = executorService.submit(new Runnable() {
 			@Override
 			public void run() {
 				try {
-					while (!closed.get()) {
-						followQueue.offer(queue.take());
+					while (!Thread.currentThread().isInterrupted()) {
+						// Load up priority queue
+						if (loadCombinedQueue()) {
+							// Process one record
+							MBRecord record = combinedQueue.take();
+							cs.accept(record);
+						} else {
+							// Nothing in the queue so sleep for a while
+							Thread.sleep(1000);
+						}
 					}
 				} catch (InterruptedException e) {
-					followQueue.offer(new MBMRecord());
+					logger.debug("Exiting MBMTopic - follow for " + topics);
 				}
-				System.out.println("Leaving follow");
 			}
+			
 		});
-		return followQueue;
+		return followFuture;
 	}
-
+	
 	@Override
-	public void stop() {
-    	closed.set(true);
-    	followFuture.cancel(true);
-//    	consumer.wakeup();
+	public int compare(MBRecord mbr1, MBRecord mbr2) {
+		return Long.compare( mbr1.getTimestamp(),mbr2.getTimestamp());
 	}
 }

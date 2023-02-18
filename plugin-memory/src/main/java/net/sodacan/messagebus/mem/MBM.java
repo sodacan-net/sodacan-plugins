@@ -14,6 +14,7 @@
  */
 package net.sodacan.messagebus.mem;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import net.sodacan.SodacanException;
 import net.sodacan.messagebus.MB;
+import net.sodacan.messagebus.MBRecord;
 import net.sodacan.messagebus.MBTopic;
 import net.sodacan.mode.Mode;
 import net.sodacan.mode.spi.ClockProvider;
@@ -78,13 +80,6 @@ public class MBM implements MB {
 		topics.remove(topicName);
 	}
 
-	@Override
-	public MBTopic openTopic(String topicName, long offset) {
-		if (!topics.containsKey(topicName)) {
-			throw new SodacanException("Topic " + topicName + " does not exist");
-		}
-		return new MBMTopic(topicName,offset,topics.get(topicName));
-	}
 
 	@Override
 	public void produce(String topicName, String key, String value) {
@@ -96,6 +91,39 @@ public class MBM implements MB {
 		long timestamp = clockProvider.getTimestamp();
 		MBMRecord record = new MBMRecord( topicName, timestamp, queue.size(), key, value);
 		queue.offer(record);
+	}
+
+	/**
+	 * Construct a topic ready for a snapshot or follow operation. The topic must exist.
+	 * A topic is a one-time use object. 
+	 */
+	@Override
+	public MBTopic openTopic(String topicName, long nextOffset) {
+		Map<String,Long> topics = new HashMap<>();
+		topics.put(topicName, nextOffset);
+		return openTopics(topics);
+	}
+
+	/**
+	 * Construct  topic consumer. The topics must exist.
+	 * A topic is a one-time use object. 
+	 */
+	@Override
+	public MBTopic openTopics(Map<String,Long> topics) {
+		// Validate the topic
+		Set<String> topic = listTopics();
+		// Validate the topic names we're going to open
+		for (String t : topics.keySet()) {
+			if (!topic.contains(t)) {
+				throw new SodacanException("Unknown topic name: " + t);
+			}
+		}
+		// Get the queues we're using, too.
+		Map<String,BlockingQueue<MBRecord>> queues = new HashMap<>();
+		for (String t : topics.keySet()) {
+			queues.put(t, queues.get(t));
+		}
+		return new MBMTopic( configProperties, topics, queues );
 	}
 
 }
