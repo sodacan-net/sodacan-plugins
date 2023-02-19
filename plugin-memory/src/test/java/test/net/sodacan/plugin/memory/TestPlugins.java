@@ -14,8 +14,6 @@
  */
 package test.net.sodacan.plugin.memory;
 
-import static org.junit.Assert.assertNotNull;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,11 +23,6 @@ import net.sodacan.config.Config;
 import net.sodacan.config.ConfigMode;
 import net.sodacan.mode.Mode;
 import net.sodacan.mode.spi.PluginEvent;
-import net.sodacan.module.statement.SodacanModule;
-import net.sodacan.module.value.Value;
-import net.sodacan.module.variable.ModuleVariable;
-import net.sodacan.module.variable.VariableDef;
-import net.sodacan.module.variables.ModuleVariables;
 
 public class TestPlugins {
 	private Map<String,PluginEvent> changeEvents = new HashMap<>();

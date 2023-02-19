@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -93,6 +92,8 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 		properties.setProperty("bootstrap.servers", brokers);
 //		properties.setProperty("group.id", "test");
 		properties.setProperty("enable.auto.commit", "false");
+		properties.setProperty("max.partition.fetch.bytes", "100000");
+		properties.setProperty("fetch.max.wait.ms", "80");
 		properties.setProperty("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		properties.setProperty("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		consumer = new KafkaConsumer<>(properties);
@@ -145,7 +146,7 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 	 * @Returns true if any results were added to the priority Queue
 	 * @throws InterruptedException
 	 */
-	public boolean loadCombinedQueue() throws InterruptedException {
+	protected boolean loadCombinedQueue() throws InterruptedException {
 		while (!endOffsets.isEmpty()) {
 			ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
 			for (ConsumerRecord<String,String> record : records ) {
@@ -210,8 +211,11 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 	 * @Returns true if any results were added to the priority Queue
 	 * @throws InterruptedException
 	 */
-	public boolean loadFollowQueue() throws InterruptedException {
-		while (true) {
+	protected int loadFollowQueue() throws InterruptedException {
+		int MAX_COMBINED_COUNT = 100;
+		int count = 0;
+		// Limit how many times we grab records
+		for (int c = 0; c < MAX_COMBINED_COUNT; c++ ) {
 			ConsumerRecords<String, String> records = consumer.poll(poll_timeout_ms);
 			if (records.isEmpty()) {
 				break;
@@ -219,9 +223,10 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 			for (ConsumerRecord<String,String> record : records ) {
 				MBRecord mbr = new MBKRecord(record);
 				combinedQueue.put(mbr);
+				count++;
 			}
 		}
-		return !combinedQueue.isEmpty();
+		return count;
 	}
 
 	/**
@@ -240,10 +245,9 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 				try {
 					consumer = openConsumer();
 					while (!Thread.currentThread().isInterrupted()) {
-						if (loadFollowQueue()) {
+						int count = loadFollowQueue();
+						for( int c = 0; c <  count;c++) {
 							cs.accept( combinedQueue.take());
-						} else {
-							Thread.sleep(1000);
 						}
 					}
 		        } catch (WakeupException e) {
@@ -256,6 +260,7 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 				}
 		    }
 		});
+		// This thread just waits for a cancel request and sends a wakeup to Kafka. Interrupting Kafka is a no-no.
 		Future<?> future = executorService.submit(new Runnable() {
 			@Override
 			public void run() {
