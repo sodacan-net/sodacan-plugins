@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import com.google.auto.service.AutoService;
 
 import net.sodacan.messagebus.MBRecord;
+import net.sodacan.messagebus.MBTick;
 import net.sodacan.mode.spi.ClockProvider;
-import net.sodacan.mode.spi.MBTick;
 import net.sodacan.mode.spi.Plugin;
 
 @AutoService(ClockProvider.class)

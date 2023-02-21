@@ -69,7 +69,7 @@ public class TestPlugins {
 //		v2.setChangedInCycle(true);
 //		ConfigMode configMode = ConfigMode.newConfiguModeBuilder()
 //				.name("basemode")
-//				.stateStoreType("memory")
+//				.tickSourceType("memory")
 //				.build();
 //		Config config = new Config();
 //		config.addConfigMode(configMode);

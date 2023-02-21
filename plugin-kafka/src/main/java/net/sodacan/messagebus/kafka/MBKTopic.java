@@ -122,6 +122,7 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 		}
 		return consumer;
 	}
+	
 	/**
 	 * If we reach the end of a topic, remove it from the endOffsets map
 	 * @param record
