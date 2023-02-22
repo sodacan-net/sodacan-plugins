@@ -16,6 +16,7 @@ package net.sodacan.messagebus.kafka;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -30,6 +31,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -47,7 +49,7 @@ import net.sodacan.messagebus.MBTopic;
  * @author John Churin
  *
  */
-public class MBKTopic implements MBTopic, Comparator<MBRecord> {
+public class MBKTopic implements MBTopic, Comparator<MBRecord>, ConsumerRebalanceListener {
 	private final static Logger logger = LoggerFactory.getLogger(MBKTopic.class);
 	private Duration poll_timeout_ms = Duration.ofMillis(200);
 	
@@ -207,8 +209,41 @@ public class MBKTopic implements MBTopic, Comparator<MBRecord> {
 		
 	}
 	/**
+	 * When we lose a topic
+	 */
+	@Override
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+//		TopicPartition tp = new TopicPartition(TICK_TOPIC, 0);
+//		if (partitions.contains(tp)) {
+//	    	logger.debug("TickSource: Going inactive" + partitions);
+//			nextTime = null;	// This keeps the main loop quiet while standing by
+//		}
+	}
+
+	/**
+	 * When we get control, we start by reading the last record in topic.
+	 * This seeds the nextTick value.
+	 */
+	@Override
+	public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+//		TopicPartition tp = new TopicPartition(TICK_TOPIC, 0);
+//		Map<TopicPartition,Long> endOffsets;
+//		if (partitions.contains(tp)) {
+//			nextTime = null;	// This initializes the main loop
+//	    	endOffsets = consumer.endOffsets(partitions);
+//	    	Long endOffset = endOffsets.get(tp);
+//	    	if (endOffset > 0L ) {
+//	    		endOffset--;
+//	    		consumer.seek(tp, endOffset);
+//	    	}
+//	    	logger.debug("TickSource: Going active at offset: " + endOffset);
+//		}
+	}
+
+	
+
+	/**
 	 * Load up the priority queue so that messages are sorted by timestamp.
-	 * This method doesn't wait, so it should be called from a sleep loop.
 	 * @Returns true if any results were added to the priority Queue
 	 * @throws InterruptedException
 	 */
